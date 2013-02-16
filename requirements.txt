@@ -1,0 +1,3 @@
+-e git+http://github.com/apache/libcloud.git@af9eb609468e76df91018848f77fc3d7380bc3b9#egg=libcloud
+psutil
+flask
