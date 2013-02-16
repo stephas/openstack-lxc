@@ -1,0 +1,11 @@
+#cloud-config
+output: {all: '| tee -a /var/log/cloud-init-output.log'}
+apt-mirror: http://archive.ubuntu.com/ubuntu
+manage_etc_hosts: localhost
+locale: 
+runcmd:
+ - [ sh, -xc, "echo 'root:ubuntu' | chpasswd" ]
+ - [ sh, -xc, "echo 'ubuntu:ubuntu' | chpasswd" ]
+ - [ sh, -xc, "sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config" ]
+ - [ service , ssh, reload ]
+ - [ sh, -xc, "sed -i 's/ubuntu-mirror.localdomain/archive.ubuntu.com/' /etc/apt/sources.list" ]
