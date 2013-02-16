@@ -1,0 +1,5 @@
+make a Vagrantfile, which provides an openstack api.
+this openstack api provides a minimal implementation of version 2.0
+to allow python's libcloud to create ubuntu precise images of a default size using LXC
+given the vagrantbox as a target.
+
