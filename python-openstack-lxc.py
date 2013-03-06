@@ -195,6 +195,23 @@ def get_ip_from_lease_file(compute_id):
             ip = match.groups()[0]
     return ip
 
+def is_cloudinit_done(compute_id):
+    name = name_to_compute_id(compute_id)
+    filename = "/var/lib/lxc/{0}/rootfs/var/log/cloud-init-output.log".format(name)
+    cloudinit_contents = []
+    completion_time = None
+    try:
+        with open(filename) as f:
+            cloudinit_contents = f.readlines()
+    except IOError as e:
+        pass
+
+    for cloudinit in cloudinit_contents:
+        match = re.match(r'cloud-init boot finished at ([^.]+).', cloudinit)
+        if match:
+            completion_time = match.groups()[0]
+    return completion_time
+
 def get_compute_addresses(compute_id):
     ip = get_ip_from_lease_file(compute_id)
     d = { "private": [], "public": [] }
@@ -255,12 +272,18 @@ def get_servers_detail():
     pending_nodes = get_pending_from_threads()
     running_lxc_nodes = lxc_list()[0]
     running_with_ip = [ n for n in running_lxc_nodes if get_ip_from_lease_file(n) ]
+    running_with_cloudinit = [ n for n in running_lxc_nodes if is_cloudinit_done(n) ]
     # pending nodes are from threads and running w/o ip
-    print 'running w/o ip: {0}'.format(set(running_lxc_nodes).difference(running_with_ip))
-    pending_nodes = set(pending_nodes).union(set(running_lxc_nodes).difference(running_with_ip))
+    running_without_ip = set(running_lxc_nodes).difference(running_with_ip)
+    print 'running w/o ip: {0}'.format(running_without_ip)
+    running_without_cloudinit = set(running_lxc_nodes).difference(running_with_cloudinit)
+    print 'running w/o cloudinit: {0}'.format(running_without_cloudinit)
+    print 'not complete: {0}'.format(running_without_ip.union(running_without_cloudinit))
+    pending_nodes = set(pending_nodes).union(running_without_ip.union(running_without_cloudinit))
     print "pending: {0}".format(pending_nodes)
-    print "running: {0}".format(running_with_ip) 
-    print "all: {0}".format(set(running_with_ip).union(pending_nodes)) 
+    all_running = set(running_lxc_nodes).difference(pending_nodes)
+    print "running: {0}".format(all_running)
+    print "all: {0}".format(all_running.union(pending_nodes)) 
     servers = []
     for n in pending_nodes:
         cn = create_compute_server(n)['server']
@@ -269,7 +292,7 @@ def get_servers_detail():
     if len(pending_nodes) > 0:
         import time
         time.sleep(10)
-    for n in running_with_ip:
+    for n in all_running:
         cn = create_compute_server(n)['server']
         cn["status"] = "ACTIVE"
         servers.append(cn)
